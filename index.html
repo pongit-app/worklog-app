@@ -1,4 +1,20 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>副業タイムカード</title>
+<meta name="description" content="副業の作業時間をワンタップで計測し、項目別・曜日別に集計する個人用タイムカード">
+<!-- ホーム画面アプリとして起動するための設定（iOSは読み込み時のHTMLしか見ないので、必ずここに静的に置く） -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="タイムカード">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="#F1F3F0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#101413" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="apple-touch-icon.png">
 <style>
 :root{
   --bg:#F1F3F0; --surface:#FBFCFA; --surface-2:#E9ECE7;
@@ -182,6 +198,8 @@ nav svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.7;st
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));z-index:60;background:var(--ink);color:var(--bg);padding:11px 17px;border-radius:999px;font-size:13px;font-weight:600;box-shadow:var(--shadow);max-width:88vw;text-align:center}
 .hide{display:none !important}
 </style>
+</head>
+<body>
 
 <div class="wrap">
   <header class="top">
@@ -204,41 +222,7 @@ nav svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.7;st
 (function(){
 "use strict";
 
-/* ---------- iPhone: viewport / ホーム画面アプリ用メタ / アイコン ---------- */
-(function iosSetup(){
-  function meta(attr,name,content){
-    if(document.querySelector('meta['+attr+'="'+name+'"]')) return;
-    var m=document.createElement('meta'); m.setAttribute(attr,name); m.content=content;
-    document.head.appendChild(m);
-  }
-  meta('name','viewport','width=device-width,initial-scale=1,viewport-fit=cover');
-  meta('name','apple-mobile-web-app-capable','yes');      // ホーム画面から全画面で起動
-  meta('name','mobile-web-app-capable','yes');
-  meta('name','apple-mobile-web-app-status-bar-style','default');
-  meta('name','apple-mobile-web-app-title','タイムカード'); // ホーム画面での名前
-  meta('name','format-detection','telephone=no');
-  var m1=document.createElement('meta'); m1.name='theme-color'; m1.media='(prefers-color-scheme: light)'; m1.content='#F1F3F0'; document.head.appendChild(m1);
-  var m2=document.createElement('meta'); m2.name='theme-color'; m2.media='(prefers-color-scheme: dark)';  m2.content='#101413'; document.head.appendChild(m2);
-
-  // アイコン（ストップウォッチ）を描いて apple-touch-icon に
-  try{
-    var S=180, c=document.createElement('canvas'); c.width=c.height=S;
-    var x=c.getContext('2d');
-    x.fillStyle='#14463A'; x.fillRect(0,0,S,S);
-    x.translate(90,98);
-    x.strokeStyle='#F1F3F0'; x.lineCap='round'; x.lineJoin='round';
-    x.lineWidth=9; x.beginPath(); x.arc(0,0,50,0,Math.PI*2); x.stroke();      // 文字盤
-    x.lineWidth=11; x.beginPath(); x.moveTo(-13,-62); x.lineTo(13,-62); x.stroke(); // 竜頭
-    x.lineWidth=9;  x.beginPath(); x.moveTo(0,-50); x.lineTo(0,-58); x.stroke();
-    x.strokeStyle='#E28B49'; x.lineWidth=8;                                    // 針
-    x.beginPath(); x.moveTo(0,4); x.lineTo(0,-28); x.stroke();
-    x.beginPath(); x.moveTo(0,2); x.lineTo(24,14); x.stroke();
-    var l=document.createElement('link');
-    l.rel='apple-touch-icon'; l.href=c.toDataURL('image/png');
-    document.head.appendChild(l);
-    var l2=document.createElement('link'); l2.rel='icon'; l2.href=l.href; document.head.appendChild(l2);
-  }catch(e){}
-})();
+/* iPhone向けの設定（viewport・ホーム画面アプリ・アイコン）は <head> に静的に記述 */
 
 /* ---------- storage ---------- */
 var KEY='worklog.v1';
@@ -790,3 +774,5 @@ document.addEventListener('visibilitychange',function(){ if(!document.hidden&&ta
 render();
 })();
 </script>
+</body>
+</html>
