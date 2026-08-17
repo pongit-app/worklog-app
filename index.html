@@ -771,7 +771,37 @@ document.addEventListener('keydown',function(e){
 });
 document.addEventListener('visibilitychange',function(){ if(!document.hidden&&tab==='timer') renderTimer(); });
 
+/* ---------- 旧URLからの引き継ぎ（#import=... を受け取る） ---------- */
+function importFromHash(){
+  var m=/[#&]import=([^&]*)/.exec(location.hash||'');
+  if(!m) return;
+  var incoming=null;
+  try{
+    var b64=decodeURIComponent(m[1]).replace(/-/g,'+').replace(/_/g,'/');
+    var bin=atob(b64), bytes=new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+    incoming=JSON.parse(new TextDecoder('utf-8').decode(bytes));
+  }catch(e){}
+  // URLにデータを残さない
+  try{ history.replaceState(null,'',location.pathname+location.search); }catch(e){}
+  if(!incoming||!Array.isArray(incoming.items)){ toast('引き継ぎデータを読み取れませんでした'); return; }
+
+  // idが同じものは足さない（二重取り込みしても増えない）
+  var haveI={}, haveS={}, ni=0, ns=0;
+  db.items.forEach(function(i){ haveI[i.id]=1; });
+  db.sessions.forEach(function(s){ haveS[s.id]=1; });
+  (incoming.items||[]).forEach(function(i){ if(i&&i.id&&!haveI[i.id]){ db.items.push(i); ni++; } });
+  (incoming.sessions||[]).forEach(function(s){ if(s&&s.id&&!haveS[s.id]){ db.sessions.push(s); ns++; } });
+  if(!db.lastItem) db.lastItem=incoming.lastItem||null;
+  save();
+  render();
+  toast(ni+ns ? '引き継ぎました（項目'+ni+'件・記録'+ns+'件）' : '引き継ぎ済みのデータです');
+}
+// アプリを開いたままリンクを踏んだ場合（再読み込みが起きない）にも対応する
+window.addEventListener('hashchange', importFromHash);
+
 render();
+importFromHash();
 })();
 </script>
 </body>
