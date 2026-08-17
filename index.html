@@ -53,7 +53,7 @@ body{
   font-size:15px; line-height:1.6;
   -webkit-text-size-adjust:100%;
   -webkit-tap-highlight-color:transparent;
-  overscroll-behavior-y:none;
+  /* overscroll-behavior-y は指定しない。指定すると「上から引っ張って再読み込み」ができなくなる */
 }
 button,nav,.readout,.eyebrow,.k{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .mono{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
@@ -597,7 +597,7 @@ function renderItems(){
       '<button class="btn danger full" data-wipe="1">すべての記録を削除</button>'+
     '</div>'+
     '<div class="ver">時間管理　バージョン '+VERSION+'<br>'+
-      '<span>更新したのに変わらないときは、画面を上から下に引っ張ってください</span></div>'+
+      '<span>日付が古いときは、画面を上から引っ張るか、アプリを終了して開き直してください</span></div>'+
   '</div>';
   view.innerHTML=html;
 }
