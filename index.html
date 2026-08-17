@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>副業タイムカード</title>
-<meta name="description" content="副業の作業時間をワンタップで計測し、項目別・曜日別に集計する個人用タイムカード">
+<title>時間管理</title>
+<meta name="description" content="作業時間をワンタップで計測し、項目別・曜日別に集計する個人用の時間管理アプリ">
 <!-- ホーム画面アプリとして起動するための設定（iOSは読み込み時のHTMLしか見ないので、必ずここに静的に置く） -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="タイムカード">
+<meta name="apple-mobile-web-app-title" content="時間管理">
 <meta name="format-detection" content="telephone=no">
 <meta name="theme-color" content="#F1F3F0" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#101413" media="(prefers-color-scheme: dark)">
@@ -203,7 +203,7 @@ nav svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.7;st
 
 <div class="wrap">
   <header class="top">
-    <div class="brand">副業<span>タイムカード</span></div>
+    <div class="brand">時間<span>管理</span></div>
     <div class="top-note" id="topnote"></div>
   </header>
   <main id="view"></main>
@@ -287,6 +287,7 @@ function runningMs(){ return db.running? Date.now()-db.running.start : 0; }
 /* ---------- rendering ---------- */
 var tab='timer', tick=null;
 var statsRange='week';
+var sortMode=false;   // 項目タブ: 並べ替え中かどうか
 var view=document.getElementById('view');
 
 function render(){
@@ -294,6 +295,7 @@ function render(){
     if(b.dataset.tab===tab) b.setAttribute('aria-current','page'); else b.removeAttribute('aria-current');
   });
   if(tick){clearInterval(tick);tick=null;}
+  if(tab!=='items') sortMode=false;
   if(tab==='timer') renderTimer();
   else if(tab==='log') renderLog();
   else if(tab==='stats') renderStats();
@@ -540,10 +542,22 @@ function renderStats(){
 function renderItems(){
   var totals={};
   db.sessions.forEach(function(s){ totals[s.itemId]=(totals[s.itemId]||0)+dur(s); });
+  var last=db.items.length-1;
   var html='<div class="stack" style="padding-top:16px">'+
-    '<h2 class="sec">項目マスタ</h2>'+
+    '<div class="spread"><h2 class="sec">項目マスタ</h2>'+
+      (db.items.length>1?'<button class="btn" data-sortmode="1">'+(sortMode?'完了':'並べ替え')+'</button>':'')+
+    '</div>'+
+    (sortMode?'<div class="insight">▲▼ で順番を入れかえます。ここで並べた順に、<b>計測タブのボタンも並びます</b>。</div>':'')+
     '<div class="card">'+
-      (db.items.length? db.items.map(function(it){
+      (db.items.length? db.items.map(function(it,i){
+        if(sortMode){
+          return '<div class="item-row"'+(it.archived?' style="opacity:.5"':'')+'>'+
+            '<span class="sw-btn" style="background:'+it.color+'"></span>'+
+            '<span style="flex:1;font-weight:600;min-width:0">'+esc(it.name)+'</span>'+
+            '<button class="x" data-up="'+it.id+'" aria-label="上へ"'+(i===0?' disabled style="opacity:.25"':'')+'>▲</button>'+
+            '<button class="x" data-down="'+it.id+'" aria-label="下へ"'+(i===last?' disabled style="opacity:.25"':'')+'>▼</button>'+
+          '</div>';
+        }
         return '<div class="item-row" data-id="'+it.id+'"'+(it.archived?' style="opacity:.5"':'')+'>'+
           '<button class="sw-btn" data-color="'+it.id+'" style="background:'+it.color+'" aria-label="色を変える"></button>'+
           '<input type="text" value="'+esc(it.name)+'" data-rename="'+it.id+'" aria-label="項目名">'+
@@ -552,13 +566,14 @@ function renderItems(){
           '<button class="x" data-del="'+it.id+'" aria-label="削除">×</button>'+
         '</div>';
       }).join(''):'<div style="color:var(--faint);font-size:13px;text-align:center;padding:8px 0">項目がありません</div>')+
+      (sortMode?'':
       '<div class="row" style="margin-top:14px">'+
         '<input type="text" id="newItem" placeholder="項目名を入力" style="flex:1">'+
         '<button class="btn primary" id="addItem">追加</button>'+
-      '</div>'+
+      '</div>')+
     '</div>';
 
-  if(db.items.length<3){
+  if(db.items.length<3 && !sortMode){
     html+='<div><div class="eyebrow" style="margin-bottom:8px">よく使う候補</div><div class="chips">'+
       SUGGEST.filter(function(n){return !db.items.some(function(i){return i.name===n;});})
       .map(function(n){return '<button class="chip ghost" data-suggest="'+esc(n)+'">＋ '+esc(n)+'</button>';}).join('')+
@@ -574,6 +589,18 @@ function renderItems(){
       '<button class="btn danger full" data-wipe="1">すべての記録を削除</button>'+
     '</div></div>';
   view.innerHTML=html;
+}
+
+function moveItem(id,dir){
+  var idx=-1;
+  for(var k=0;k<db.items.length;k++) if(db.items[k].id===id) idx=k;
+  var j=idx+dir;
+  if(idx<0||j<0||j>=db.items.length) return;
+  var t=db.items[idx]; db.items[idx]=db.items[j]; db.items[j]=t;
+  save();
+  var y=window.scrollY;           // 押した位置から画面が飛ばないように
+  renderItems();
+  window.scrollTo(0,y);
 }
 
 function addItem(name){
@@ -725,6 +752,9 @@ document.addEventListener('click',function(e){
     return;
   }
   if(t.closest('#addItem')){ var f=document.getElementById('newItem'); addItem(f.value); return; }
+  if(t.closest('[data-sortmode]')){ sortMode=!sortMode; renderItems(); return; }
+  var up=t.closest('[data-up]');   if(up){ moveItem(up.dataset.up,-1); return; }
+  var down=t.closest('[data-down]'); if(down){ moveItem(down.dataset.down,1); return; }
   var sg=t.closest('[data-suggest]'); if(sg){ addItem(sg.dataset.suggest); return; }
   var col=t.closest('[data-color]'); if(col){
     var it=item(col.dataset.color);
