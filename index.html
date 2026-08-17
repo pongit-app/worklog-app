@@ -178,6 +178,11 @@ select{background-image:none}
 .item-row input[type=text]:focus{background:var(--surface-2);border-color:var(--line-strong);padding:4px 8px}
 .tot{font-size:12px;color:var(--faint);white-space:nowrap}
 .x{color:var(--faint);font-size:20px;line-height:1;padding:6px}
+.ver{
+  text-align:center;font-size:11.5px;color:var(--faint);
+  letter-spacing:.04em;line-height:1.9;padding:2px 0 4px;
+}
+.ver span{font-size:11px;opacity:.85}
 
 /* ---- nav ---- */
 nav{
@@ -223,6 +228,9 @@ nav svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.7;st
 "use strict";
 
 /* iPhone向けの設定（viewport・ホーム画面アプリ・アイコン）は <head> に静的に記述 */
+
+/* 公開時に日付へ差し替わる（VERSION='...' の行を deploy 時に sed で書き換える） */
+var VERSION='2026-08-17';
 
 /* ---------- storage ---------- */
 var KEY='worklog.v1';
@@ -587,7 +595,10 @@ function renderItems(){
       '<button class="btn full" data-backup="1">バックアップ（JSON）</button>'+
       '<button class="btn full" data-restore="1">バックアップから復元</button>'+
       '<button class="btn danger full" data-wipe="1">すべての記録を削除</button>'+
-    '</div></div>';
+    '</div>'+
+    '<div class="ver">時間管理　バージョン '+VERSION+'<br>'+
+      '<span>更新したのに変わらないときは、画面を上から下に引っ張ってください</span></div>'+
+  '</div>';
   view.innerHTML=html;
 }
 
