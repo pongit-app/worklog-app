@@ -13,8 +13,8 @@
 <meta name="format-detection" content="telephone=no">
 <meta name="theme-color" content="#F1F3F0" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#101413" media="(prefers-color-scheme: dark)">
-<link rel="apple-touch-icon" href="apple-touch-icon.png?v=4">
-<link rel="icon" type="image/png" href="apple-touch-icon.png?v=4">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=5">
+<link rel="icon" type="image/png" href="apple-touch-icon.png?v=5">
 <style>
 :root{
   --bg:#F1F3F0; --surface:#FBFCFA; --surface-2:#E9ECE7;
@@ -178,6 +178,12 @@ select{background-image:none}
 .item-row input[type=text]:focus{background:var(--surface-2);border-color:var(--line-strong);padding:4px 8px}
 .tot{font-size:12px;color:var(--faint);white-space:nowrap}
 .x{color:var(--faint);font-size:20px;line-height:1;padding:6px}
+.warn-card{
+  background:var(--live-soft);border:1px solid var(--live);border-radius:14px;
+  padding:14px;font-size:13px;line-height:1.7;
+}
+.warn-card b{color:var(--live)}
+.hint{font-size:12px;color:var(--faint);margin-top:-6px}
 .ver{
   text-align:center;font-size:11.5px;color:var(--faint);
   letter-spacing:.04em;line-height:1.9;padding:2px 0 4px;
@@ -230,13 +236,14 @@ nav svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.7;st
 /* iPhone向けの設定（viewport・ホーム画面アプリ・アイコン）は <head> に静的に記述 */
 
 /* 公開時に日付へ差し替わる（VERSION='...' の行を deploy 時に sed で書き換える） */
-var VERSION='2026-08-18';
+var VERSION='2026-08-21';
 
 /* ---------- storage ---------- */
 var KEY='worklog.v1';
 var PALETTE=['#2F8F7B','#C2571F','#4A6FC4','#9A5BA8','#B08B22','#C2455F','#3F8FBF','#6B8F3A'];
 var SUGGEST=['ブログ執筆','記事リライト','動画編集','SNS運用','学習・インプット','経理・事務','案件対応','リサーチ'];
 var WD=['日','月','火','水','木','金','土'];
+var LONG_MS=6*3600*1000;   // これを超えて計測が続いていたら「終了の押し忘れ」として確認する
 
 var db=load();
 function load(){
@@ -337,6 +344,10 @@ function renderTimer(){
         ? esc(itemName(db.running.itemId))+' ・ '+tstr(new Date(db.running.start))+' 開始'
         : '項目を選んで開始')+'</div>'+
     '</div>'+
+    (live && now-db.running.start>=LONG_MS
+      ? '<div class="warn-card">終了を押し忘れていませんか？ <b>'+hm(now-db.running.start)+'</b> 計測が続いています。'+
+        '<button class="btn full" id="fixNow" style="margin-top:10px">終了時刻を直して記録する</button></div>'
+      : '')+
     '<div class="chips" id="chips">'+ acts.map(function(it){
         return '<button class="chip" data-pick="'+it.id+'" aria-pressed="'+(it.id===sel)+'"'+(live?' disabled style="opacity:.45"':'')+'>'+
           '<span class="sw" style="background:'+it.color+'"></span>'+esc(it.name)+'</button>';
@@ -375,6 +386,7 @@ function startTimer(){
 }
 function stopTimer(){
   var r=db.running, end=Date.now();
+  if(end-r.start>=LONG_MS){ openFixSheet(r,end); return; }   // 押し忘れの可能性。計測は続けたまま確認する
   db.running=null;
   if(end-r.start<30000){
     save();
@@ -384,11 +396,65 @@ function stopTimer(){
   save(); render(); toast(hm(end-r.start)+' を記録');
 }
 
+/* 終了の押し忘れを直して記録する */
+function readT(root,dSel,tSel){
+  var d=root.querySelector(dSel).value, t=root.querySelector(tSel).value;
+  if(!d||!t) return NaN;
+  return new Date(d+'T'+t+':00').getTime();
+}
+function openFixSheet(r,end){
+  var sd=new Date(r.start), ed=new Date(end);
+  var opts=db.items.map(function(it){
+    return '<option value="'+it.id+'"'+(it.id===r.itemId?' selected':'')+'>'+esc(it.name)+'</option>';
+  }).join('');
+  sheet('<h3>終了を押し忘れていませんか？</h3>'+
+    '<div class="stack">'+
+      '<div class="insight"><b>'+hm(end-r.start)+'</b> 計測が続いています（'+(sd.getMonth()+1)+'月'+sd.getDate()+'日 '+tstr(sd)+' 開始）。<br>実際に作業を終えた時刻に直して記録できます。</div>'+
+      '<div><label class="f">項目</label><select id="fItem">'+opts+'</select></div>'+
+      '<div><label class="f">開始</label><div class="grid2"><input type="date" id="fSd" value="'+dstr(sd)+'"><input type="time" id="fSt" value="'+tstr(sd)+'"></div></div>'+
+      '<div><label class="f">終了</label><div class="grid2"><input type="date" id="fEd" value="'+dstr(ed)+'"><input type="time" id="fEt" value="'+tstr(ed)+'"></div></div>'+
+      '<div><div class="f">開始から数えて入れる</div><div class="chips">'+
+        [30,60,90,120,180,240].map(function(m){
+          return '<button class="chip" data-quick="'+m+'">'+(m<60?m+'分':(m%60?(m/60).toFixed(1):m/60)+'時間')+'</button>';
+        }).join('')+'</div></div>'+
+      '<div><label class="f">メモ</label><input type="text" id="fMemo" value="'+esc(r.memo||'')+'" placeholder="任意"></div>'+
+      '<button class="btn primary full" id="fSave">この内容で記録する</button>'+
+      '<button class="btn danger full" id="fDrop">記録せずに捨てる</button>'+
+      '<button class="btn quiet full" data-close="1">まだ計測を続ける</button>'+
+    '</div>',
+  function(root){
+    root.querySelectorAll('[data-quick]').forEach(function(b){
+      b.onclick=function(){
+        var st=readT(root,'#fSd','#fSt');
+        if(isNaN(st)){ toast('先に開始の日付と時刻を入れてください'); return; }
+        var d=new Date(st+(+b.dataset.quick)*60000);
+        root.querySelector('#fEd').value=dstr(d);
+        root.querySelector('#fEt').value=tstr(d);
+        root.querySelectorAll('[data-quick]').forEach(function(o){ o.setAttribute('aria-pressed', o===b?'true':'false'); });
+      };
+    });
+    root.querySelector('#fSave').onclick=function(){
+      var st=readT(root,'#fSd','#fSt'), en=readT(root,'#fEd','#fEt');
+      if(isNaN(st)||isNaN(en)){ toast('日付と時刻を入れてください'); return; }
+      if(en<=st){ toast('終了が開始より前になっています'); return; }
+      if(en>Date.now()+60000){ toast('終了がこれから先の時刻になっています'); return; }
+      db.running=null;
+      db.sessions.push({id:uid(),itemId:root.querySelector('#fItem').value,start:st,end:en,memo:root.querySelector('#fMemo').value.trim()});
+      save(); closeSheet(); render(); toast(hm(en-st)+' を記録');
+    };
+    root.querySelector('#fDrop').onclick=function(){
+      if(!confirm('この計測を記録せずに捨てますか？')) return;
+      db.running=null; save(); closeSheet(); render(); toast('破棄しました');
+    };
+  });
+}
+
 /* ===== LOG ===== */
 function renderLog(){
   var list=sorted();
   var html='<div class="stack" style="padding-top:16px">'+
-    '<div class="spread"><h2 class="sec">記録</h2><button class="btn" data-add="1">＋ 手動で追加</button></div>';
+    '<div class="spread"><h2 class="sec">記録</h2><button class="btn" data-add="1">＋ 手動で追加</button></div>'+
+    (list.length?'<div class="hint">記録をタップすると、時刻・項目・メモを直せます。</div>':'');
   if(!list.length){
     html+='<div class="empty">まだ記録がありません。<br>計測タブの「開始する」か、手動追加から。</div>';
   }else{
@@ -754,6 +820,7 @@ document.addEventListener('click',function(e){
   var t=e.target;
   var go=t.closest('[data-go]'); if(go){ tab=go.dataset.go; render(); return; }
   if(t.closest('#toggle')){ db.running?stopTimer():startTimer(); return; }
+  if(t.closest('#fixNow')){ if(db.running) openFixSheet(db.running,Date.now()); return; }
   var pick=t.closest('[data-pick]'); if(pick && !db.running){ db.lastItem=pick.dataset.pick; save(); renderTimer(); return; }
   var seg=t.closest('[data-range]'); if(seg){ statsRange=seg.dataset.range; renderStats(); return; }
   var add=t.closest('[data-add]'); if(add){ openEditor(null); return; }
